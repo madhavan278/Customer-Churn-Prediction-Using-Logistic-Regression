@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Batch Prediction{% endblock %}
+
+{% block content %}
+<h1>Batch Prediction</h1>
+
+<form method="post" enctype="multipart/form-data">
+    <div class="upload-container">
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit" class="btn predict-btn">Predict</button>
+    </div>
+</form>
+
+{% if table %}
+    <div class="results-section">
+        <h2>Prediction Results (First 10 rows)</h2>
+        <div class="table-container">
+            {{ table|safe }}
+        </div>
+        
+        <div class="batch-actions">
+            <a href="{{ url_for('download_batch') }}" class="btn download-btn">
+                Download Full Results
+            </a>
+            
+            {% if show_save_button %}
+                <button id="save_batch_btn" class="btn save-btn">
+                    Save to History
+                </button>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+
+<script>
+    document.getElementById('save_batch_btn')?.addEventListener('click', async function() {
+        try {
+            const response = await fetch('/save_batch_prediction', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            alert('Batch prediction saved to history!');
+            window.location.href = '/history';
+        } catch (error) {
+            console.error('Save error:', error);
+            alert('Failed to save batch prediction: ' + error.message);
+        }
+    });
+</script>
+{% endblock %}

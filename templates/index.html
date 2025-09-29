@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Customer Churn Dashboard</h1>
+
+<div class="dashboard-stats">
+    <div class="stat-card">
+        <h3>Total Customers</h3>
+        <p class="stat-value">{{ "{:,}".format(stats.total_samples) }}</p>
+    </div>
+    <div class="stat-card">
+        <h3>Churn Rate</h3>
+        <p class="stat-value">{{ "%.1f"|format(stats.churn_rate * 100) }}%</p>
+    </div>
+    <div class="stat-card">
+        <h3>Prediction Accuracy</h3>
+        <p class="stat-value">82.3%</p>
+    </div>
+</div>
+
+<div class="dashboard-section">
+    <h2>Top Churn Factors</h2>
+    <div class="factors-container">
+        {% for factor, importance in stats.top_factors.items() %}
+        <div class="factor">
+            <div class="factor-name">{{ factor.replace('_', ' ').title() }}</div>
+            <div class="factor-bar">
+                <div class="factor-value" style="width: {{ importance * 100 }}%"></div>
+            </div>
+            <div class="factor-percent">{{ "%.0f"|format(importance * 100) }}%</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="dashboard-section">
+    <div class="chart-container">
+        <canvas id="churnChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // Churn distribution chart
+    const ctx = document.getElementById('churnChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Retained', 'Churned'],
+            datasets: [{
+                data: [{{ (1 - stats.churn_rate) * 100 }}, {{ stats.churn_rate * 100 }}],
+                backgroundColor: ['#28a745', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.raw + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Customer Churn Prediction{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="{{ url_for('home') }}" class="logo">ChurnPredict</a>
+            <div class="nav-links">
+                {% if 'user_id' in session %}
+                    <a href="{{ url_for('home') }}">Dashboard</a>
+                    <a href="{{ url_for('explorer') }}">Prediction Explorer</a>
+                    <a href="{{ url_for('batch_predict') }}">Batch Predict</a>
+                    <a href="{{ url_for('history') }}">My History</a>
+                    <span class="user-email">
+                        {% if current_user %}
+                            {{ current_user['email'] }}
+                            <a href="{{ url_for('logout')}}">Logout</a>
+                        {% endif %}
+                    </span>
+                {% else %}
+                    <a href="{{ url_for('login') }}">Login</a>
+                    <a href="{{ url_for('register') }}">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% if 'user_id' not in session and request.path not in ['/login', '/register'] %}
+            <div class="login-prompt">
+                <h2>Please login or register to access this content.</h2>
+                <div class="auth-actions">
+                    <a href="{{ url_for('login') }}" class="auth-btn login-btn">Login</a>
+                    <a href="{{ url_for('register') }}" class="auth-btn register-btn">Register</a>
+                </div>
+            </div>
+        {% else %}
+            {% block content %}{% endblock %}
+        {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

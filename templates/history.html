@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Prediction History{% endblock %}
+
+{% block content %}
+<h1>Your Prediction History</h1>
+
+{% if not predictions %}
+<div class="empty-history">
+    <p>You haven't saved any predictions yet.</p>
+    <p>Use the <a href="{{ url_for('explorer') }}">Prediction Explorer</a> or <a href="{{ url_for('batch_predict') }}">Batch Prediction</a> and save your results.</p>
+</div>
+{% else %}
+<div class="history-container">
+    {% for pred in predictions %}
+    <div class="history-card {% if pred.get('type') == 'batch' %}batch-card{% endif %}">
+        <div class="history-header">
+            <span class="history-date">{{ pred.timestamp }}</span>
+            {% if pred.get('type') == 'batch' %}
+                <span class="history-prediction batch-prediction">
+                    BATCH PREDICTION
+                </span>
+            {% else %}
+                <span class="history-prediction {{ 'high-risk' if pred.prediction == 'Yes' else 'low-risk' }}">
+                    {{ pred.prediction }} ({{ "%.1f"|format(pred.probability * 100) }}%)
+                </span>
+            {% endif %}
+        </div>
+        
+        <div class="history-details">
+            {% if pred.get('type') == 'batch' %}
+                <div class="detail-row">
+                    <span>Samples:</span>
+                    <span>{{ pred.data.samples }}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Positive Predictions:</span>
+                    <span>{{ pred.data.positive_predictions }}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Average Probability:</span>
+                    <span>{{ "%.1f"|format(pred.data.average_probability * 100) }}%</span>
+                </div>
+            {% else %}
+                <div class="detail-row">
+                    <span>Credit Score:</span>
+                    <span>{{ pred.data.credit_score }}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Age:</span>
+                    <span>{{ pred.data.age }}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Balance:</span>
+                    <span>${{ "{:,.2f}".format(pred.data.balance|float) }}</span>
+                </div>
+                <div class="detail-row">
+                    <span>Products:</span>
+                    <span>{{ pred.data.products_number }}</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

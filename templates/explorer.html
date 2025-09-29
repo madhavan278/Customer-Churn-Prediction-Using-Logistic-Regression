@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Prediction Explorer{% endblock %}
+
+{% block content %}
+<h1>Interactive Prediction Explorer</h1>
+
+<div class="explainer">
+    <p>Adjust the sliders to see how different factors affect churn probability in real-time.</p>
+</div>
+
+<div class="slider-container">
+    {% for feature in ['credit_score', 'age', 'balance', 'estimated_salary'] %}
+    <div class="slider-control">
+        <label for="{{ feature }}">{{ feature.replace('_', ' ').title() }}:</label>
+        <input type="range" id="{{ feature }}" min="{{ ranges[feature][0] }}" 
+               max="{{ ranges[feature][1] }}" step="{{ ranges[feature][2] }}"
+               value="{{ defaults[feature] }}"
+               oninput="document.getElementById('{{ feature }}_value').textContent = this.value">
+        <span id="{{ feature }}_value">{{ defaults[feature] }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="other-fields">
+    <h3>Other Parameters</h3>
+    <div class="form-group">
+        <label>Tenure (years):</label>
+        <input type="number" id="tenure" min="0" max="10" value="2">
+    </div>
+    <div class="form-group">
+        <label>Number of Products:</label>
+        <input type="number" id="products_number" min="1" max="4" value="1">
+    </div>
+    <div class="form-group">
+        <label>Has Credit Card:</label>
+        <select id="credit_card">
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Active Member:</label>
+        <select id="active_member">
+            <option value="1">Yes</option>
+            <option value="0">No</option>
+        </select>
+    </div>
+</div>
+
+<div id="live_prediction" class="prediction-result">
+    <div class="probability-meter">
+        <div class="meter-label">Churn Risk</div>
+        <div class="meter-bar">
+            <div id="probability_bar" class="meter-value" style="width: 0%"></div>
+        </div>
+        <div id="probability_value" class="meter-percent">0%</div>
+    </div>
+    <div id="prediction_text" class="prediction-text">Adjust sliders to see prediction</div>
+    <div id="important_factor" class="important-factor">Most influential factor: -</div>
+    
+    {% if 'user_id' in session %}
+    <button id="save_btn" class="save-btn">Save This Prediction</button>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize with default values
+    updateLivePrediction();
+    
+    // Set up event listeners for all inputs
+    document.querySelectorAll('input[type="range"], input[type="number"], select').forEach(input => {
+        input.addEventListener('input', updateLivePrediction);
+    });
+    
+    // Save button functionality
+    const saveBtn = document.getElementById('save_btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', savePrediction);
+    }
+});
+
+async function updateLivePrediction() {
+    const features = {};
+    
+    // Get all feature values
+    {% for feature in ['credit_score', 'age', 'balance', 'estimated_salary'] %}
+    features['{{ feature }}'] = parseFloat(document.getElementById('{{ feature }}').value);
+    {% endfor %}
+    
+    features['tenure'] = parseInt(document.getElementById('tenure').value);
+    features['products_number'] = parseInt(document.getElementById('products_number').value);
+    features['credit_card'] = parseInt(document.getElementById('credit_card').value);
+    features['active_member'] = parseInt(document.getElementById('active_member').value);
+    
+    try {
+        const response = await fetch('/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(features)
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Update display
+        const probability = data.probability * 100;
+        document.getElementById('probability_value').textContent = probability.toFixed(1) + '%';
+        document.getElementById('probability_bar').style.width = probability + '%';
+        
+        const predictionText = probability >= 50 ? 
+            `HIGH RISK (${probability.toFixed(1)}% chance of churn)` : 
+            `LOW RISK (${probability.toFixed(1)}% chance of churn)`;
+        
+        document.getElementById('prediction_text').textContent = predictionText;
+        document.getElementById('prediction_text').className = 
+            'prediction-text ' + (probability >= 50 ? 'high-risk' : 'low-risk');
+        
+        // Find most important feature
+        const importantFeature = Object.entries(data.feature_importance).reduce(
+            (a, b) => a[1] > b[1] ? a : b
+        )[0];
+        document.getElementById('important_factor').textContent = 
+            `Most influential factor: ${importantFeature.replace('_', ' ')}`;
+            
+    } catch (error) {
+        console.error('Prediction error:', error);
+    }
+}
+
+async function savePrediction() {
+    const features = {};
+    // ... (same as updateLivePrediction)
+    
+    try {
+        const response = await fetch('/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(features)
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Prepare form data
+        const formData = new FormData();
+        for (const [key, value] of Object.entries(features)) {
+            formData.append(key, value);
+        }
+        formData.append('prediction', data.churn ? 'Yes' : 'No');
+        formData.append('probability', data.probability);
+        
+        // Save to history
+        const saveResponse = await fetch('/save_prediction', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const saveData = await saveResponse.json();
+        
+        if (saveData.error) {
+            throw new Error(saveData.error);
+        }
+        
+        alert('Prediction saved to your history!');
+    } catch (error) {
+        console.error('Save error:', error);
+        alert('Failed to save prediction: ' + error.message);
+    }
+}
+</script>
+{% endblock %}
