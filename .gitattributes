@@ -1,0 +1,6 @@
+# enforce LF in repo (good for Linux servers)
+* text=auto eol=lf
+datasets/*.csv text eol=lf
+*.py text eol=lf
+templates/* text eol=lf
+static/* text eol=lf

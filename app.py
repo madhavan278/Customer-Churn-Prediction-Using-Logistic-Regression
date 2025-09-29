@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file, flash, Response, make_response, abort
 from io import StringIO
 import pickle
@@ -24,11 +25,13 @@ feature_names = ['credit_score', 'age', 'tenure', 'balance', 'products_number',
                  'credit_card', 'active_member', 'estimated_salary']
 
 app = Flask(__name__)
-app.secret_key = '@123456789'
+# Use env var for SECRET_KEY so it's not committed to repo
+app.secret_key = os.getenv("SECRET_KEY", "@123456789")
 
-# MongoDB Atlas connection
-client = MongoClient("mongodb+srv://root:root@cluster0.b4j8abw.mongodb.net/")
-db = client.churn_prediction
+# MongoDB Atlas connection via environment variable (fallback to local MongoDB)
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://127.0.0.1:27017/")
+client = MongoClient(MONGO_URI)
+db = client.get_database("churn_prediction")
 users_collection = db.users
 predictions_collection = db.predictions
 
@@ -319,4 +322,7 @@ def logout():
     return redirect(url_for('login'))
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    # Render/Heroku set PORT automatically — read from env
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
